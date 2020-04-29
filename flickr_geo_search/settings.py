@@ -52,8 +52,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
-    'sslserver'
+    'widget_tweaks',
+    'sslserver',
+    'search_service'
 ]
 
 MIDDLEWARE = [
@@ -141,3 +142,5 @@ FLICKR_API_KEY = get_secret('FLICKR_API_KEY')
 FLICKR_API_SECRET = get_secret('FLICKR_API_SECRET')
 
 SECURE_SSL_REDIRECT = True
+
+PER_PAGE = get_secret('PER_PAGE')

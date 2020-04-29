@@ -1,0 +1,50 @@
+{% load widget_tweaks %}
+<div class="modal" id="addLocationModal">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add Location By Name</h5>
+        <button
+          type="button"
+          class="close"
+          data-dismiss="modal"
+          aria-label="Close"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- prettier-ignore -->
+        <form class="form-horizontal ml-4" id="locationTagForm">
+            {% csrf_token %}
+            <div class="form-group row">
+                <label for="{{ location_form.location_name.auto_id }}" class="col-4"
+                  >{{ location_form.location_name.label }}</label
+                >
+                {% render_field location_form.location_name class="form-control col-6" placeholder=location_form.location_name.label %}
+            </div>  
+            <div class="form-group row">
+              <label for="{{ location_form.latitude.auto_id }}" class="col-4"
+                >{{ location_form.latitude.label }}</label
+              >
+              {% render_field location_form.latitude class="form-control col-6" placeholder=location_form.latitude.label %}
+            </div>
+            <div class="form-group row">
+              <label for="{{ location_form.longitude.auto_id }}" class="col-4"
+                >{{ location_form.longitude.label }}</label
+              >
+              {% render_field location_form.longitude class="form-control col-6" placeholder=location_form.longitude.label %}
+            </div>
+          </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary save-modal-data">
+          Save changes
+        </button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

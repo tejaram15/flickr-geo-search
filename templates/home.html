@@ -1,43 +1,190 @@
-<!DOCTYPE html>
-<head>
-  <title>Home Page</title>
-  <link rel="stylesheet" href="https://bootswatch.com/4/flatly/bootstrap.min.css"></link>
-</head>
-<body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <a class="navbar-brand" href="{% url 'home' %}">Flickr Geo Search</a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarColor02" aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
+{% extends 'base.html' %} {% load widget_tweaks %} {% block content %}
+<div class="bg-gray row justify-content-center align-items-center mt-5">
+  <h2 class="row text-warning mx-auto">Search Flickr photos</h2>
+  <div class="row col-12 mt-5">
+    <div class="col-4 form-inline">
+      <label class="col-4">Location</label>
+      <select class="col-5 form-control" id="location-tags"></select>
+      <button
+        class="btn btn-success ml-2 col-2 pl-0 pr-0"
+        id="add-location-tag"
+      >
+        <i class="fa fa-plus-circle" aria-hidden="true"></i>
+      </button>
+    </div>
+    <!-- prettier-ignore -->
+    <form class="form-inline col-8" id="latLonSearchForm">
+      {% csrf_token %}
+      <input type="hidden" id="current_page" name="current_page" value="" />
+      <div class="form-group col-5">
+        <label for="{{ search_form.latitude.auto_id }}" class="col-4"
+          >{{ search_form.latitude.label }}</label
+        >
+        {% render_field search_form.latitude class="form-control col-6" placeholder=search_form.latitude.label %}
+      </div>
+      <div class="form-group col-5">
+        <label for="{{ search_form.longitude.auto_id }}" class="col-4"
+          >{{ search_form.longitude.label }}</label
+        >
+        {% render_field search_form.longitude class="form-control col-6" placeholder=search_form.longitude.label %}
+      </div>
+      <button type="submit" class="form-control btn-outline-success col-2">
+        Search
+      </button>
+    </form>
+  </div>
+</div>
+<div class="images mt-5 row justify-content-center align-items-center">
+  <div
+    class="ajax-loader spinner-border text-warning mt-5 d-none"
+    role="status"
+    style="width: 5rem; height: 5rem;"
+  >
+    <span class="sr-only">Loading...</span>
+  </div>
+</div>
+<div
+  class="row pagination-div justify-content-center align-items-center d-none m-3"
+>
+  <button type="button" id="prev" class="btn btn-outline-success">
+    Prev Page
+  </button>
+  <span class="clearfix ml-2 mr-2 page_details"></span>
+  <button type="button" id="next" class="btn btn-outline-warning">
+    Next Page
+  </button>
+</div>
+<div
+  id="photo-card"
+  class="col-lg-4 card border-info m-3 d-none"
+  style="max-width: 10rem;"
+>
+  <div class="photo-title mx-auto">Title</div>
+  <div class="card-body">
+    <img class="img-responsive photo-thumbnail-url" src="" />
+  </div>
+  <div class="card-footer">
+    <button class="btn btn-sm btn-outline-primary add-favorite" data-url="">
+      Add To Favourite
     </button>
-    <div class="collapse navbar-collapse" id="navbarColor02">
-      <ul class="navbar-nav mr-auto">
-        <li class="nav-item active">
-          <a class="nav-link" href="{% url 'home' %}">Home <span class="sr-only">(current)</span></a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="#">Favourites</a>
-        </li>
-      </ul>
-      {% if request.session.token %}
-        <ul class="navbar-nav ml-auto">
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
-              Hello User!
-            </a>
-            <div class="dropdown-menu dropdown-menu-right">
-              <a class="dropdown-item" href="{% url 'logout' %}">Logout</a>
-            </div>
-          </li>
-        </ul>
-      {% else %}
-        <ul class="navbar-nav ml-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'login' %}">Login to Flickr!</a>
-          </li>
-        </ul>
-      {% endif %}
-  </nav>
-  <script src="https://bootswatch.com/_vendor/jquery/dist/jquery.min.js"></script>
-  <script src="https://bootswatch.com/_vendor/popper.js/dist/umd/popper.min.js"></script>
-  <script src="https://bootswatch.com/_vendor/bootstrap/dist/js/bootstrap.min.js"></script>
-</body>
+  </div>
+</div>
+{% include 'location.html' %} {% endblock %} {% block javascript %}
+<script type="text/javascript">
+  let updateLocationTags = function () {
+    let updateUrl = "{% url 'get_location_tags' %}";
+    fetch(updateUrl, {
+      method: "GET",
+      cache: "no-cache",
+      headers: {
+        content_type: "application/json",
+      },
+      credentials: "same-origin",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        $("#location-tags").html("");
+        // Dummy Option
+        $("#location-tags").append(new Option("Custom", null, true));
+        if (data.locations !== undefined) {
+          data.locations.forEach(function (loc) {
+            $("#location-tags").append(
+              new Option(loc.location_name, loc.latitude + "," + loc.longitude)
+            );
+          });
+        }
+        $("#location-tags")
+          .on("change", function () {
+            if ($(this).val() !== null) {
+              let [lat, lon] = $(this).val().split(",");
+              $("#latLonSearchForm").find("input[name='latitude']").val(lat);
+              $("#latLonSearchForm").find("input[name='longitude']").val(lon);
+            }
+          })
+          .trigger("change");
+      });
+  };
+
+  let addToLocationTags = function (locationTagObject) {
+    let addToLocationTagsUrl = "{% url 'add_location_tag' %}";
+    fetch(addToLocationTagsUrl, {
+      method: "POST",
+      cache: "no-cache",
+      headers: {
+        content_type: "application/json",
+        "X-CSRFToken": locationTagObject.csrfmiddlewaretoken,
+      },
+      body: JSON.stringify(locationTagObject),
+      credentials: "same-origin",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.errors) {
+          console.log(data.errors);
+          // TODO: Add Some Error Popup.
+        } else if (data.success) {
+          console.log(data.success);
+          // TODO: Add Some Error Popup.
+        }
+        location.reload();
+      });
+  };
+
+  $(document).ready(function () {
+    updateLocationTags();
+  });
+
+  $("#add-location-tag").on("click", function () {
+    $("#addLocationModal").modal("show");
+  });
+
+  $("#latLonSearchForm").submit(function (e) {
+    let url = "{{ search_url }}";
+    let formData = $("#latLonSearchForm").serialize();
+    tableAjaxCall(url, formData);
+    e.preventDefault(); // avoid to execute the actual submit of the form.
+  });
+
+  $("#locationTagForm").submit(function (e) {
+    let arrayData = $("#locationTagForm").serializeArray();
+    var formData = {};
+    $(arrayData).each(function (index, obj) {
+      formData[obj.name] = obj.value;
+    });
+    addToLocationTags(formData);
+    e.preventDefault(); // avoid to execute the actual submit of the form.
+  });
+
+  $("#prev").on("click", function () {
+    let current_page = $("#current_page").val();
+    if (
+      current_page !== null ||
+      current_page !== "1" ||
+      current_page !== undefined
+    ) {
+      current_page = parseInt(current_page);
+      if (current_page != 1) current_page -= 1;
+      $("#current_page").val(current_page);
+    }
+    $("#latLonSearchForm").trigger("submit");
+  });
+
+  $("#next").on("click", function () {
+    let current_page = $("#current_page").val();
+    if (
+      current_page !== null ||
+      current_page !== "1" ||
+      current_page !== undefined
+    ) {
+      current_page = parseInt(current_page);
+      current_page += 1;
+      $("#current_page").val(current_page);
+    }
+    $("#latLonSearchForm").trigger("submit");
+  });
+
+  $(".save-modal-data").on("click", function () {
+    $("#locationTagForm").trigger("submit");
+  });
+</script>
+{% endblock %}

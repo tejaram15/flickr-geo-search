@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<head>
+  <title>{{ title }}</title>
+  <link
+    rel="stylesheet"
+    href="https://bootswatch.com/4/flatly/bootstrap.min.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+  />
+</head>
+<body>
+  {% include 'navbar.html' %}
+  <div class="container">
+    {% block content %} {% endblock %}
+  </div>
+  <script src="https://bootswatch.com/_vendor/jquery/dist/jquery.min.js"></script>
+  <script src="https://bootswatch.com/_vendor/popper.js/dist/umd/popper.min.js"></script>
+  <script src="https://bootswatch.com/_vendor/bootstrap/dist/js/bootstrap.min.js"></script>
+  <script>
+    String.prototype.trimToLength = function (m) {
+      return this.length > m
+        ? jQuery.trim(this).substring(0, m).split(" ").slice(0, -1).join(" ") +
+            "..."
+        : "Untitled";
+    };
+
+    let addToFavourites = function (urlObject) {
+      let addToFavouritesUrl = "{% url 'add_to_favourites' %}";
+      fetch(addToFavouritesUrl, {
+        method: "POST",
+        cache: "no-cache",
+        headers: {
+          content_type: "application/json",
+          "X-CSRFToken": urlObject.csrfmiddlewaretoken,
+        },
+        body: JSON.stringify(urlObject),
+        credentials: "same-origin",
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.errors) {
+            console.log(data.errors);
+            // TODO: Add Some Error Popup.
+          } else if (data.success) {
+            console.log(data.success);
+            // TODO: Add Some Error Popup.
+          }
+        });
+    };
+
+    let appendToParentContainer = function (photoObject) {
+      let cloneElement = $("#photo-card").clone();
+      cloneElement.removeAttr("id");
+      photoObject.title
+        ? cloneElement
+            .find(".photo-title")
+            .html(photoObject.title.trimToLength(20))
+        : "Untitled";
+      cloneElement
+        .find(".photo-thumbnail-url")
+        .attr("src", photoObject.thumbnailUrl);
+      cloneElement
+        .find(".add-favorite")
+        .attr("data-url", photoObject.mediumUrl);
+      cloneElement.removeClass("d-none").addClass("d-block");
+      cloneElement.find(".add-favorite").on("click", function () {
+        let favouriteUrl = $(this).attr("data-url");
+        let urlObject = {
+          photo_original_url: favouriteUrl,
+          csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').attr(
+            "value"
+          ),
+        };
+        addToFavourites(urlObject);
+      });
+      $(".images").append(cloneElement);
+    };
+
+    let clearParentContainer = function () {
+      $(".images").children().not(".ajax-loader").remove();
+    };
+
+    let tableAjaxCall = function (url, formData) {
+      $.ajax({
+        type: "GET",
+        beforeSend: function () {
+          $(".ajax-loader").removeClass("d-none");
+          $(".pagination-div").addClass("d-none");
+          clearParentContainer();
+        },
+        url: url,
+        data: formData, // serializes the form's elements.
+        success: function (data) {
+          if (data === null || data.photos === undefined)
+            $(".pagination-div").addClass("d-none");
+          if (data.photos !== undefined) {
+            data.photos.forEach(function (photoObject) {
+              appendToParentContainer(photoObject);
+            });
+          }
+          if (data.current_page !== undefined) {
+            $("#current_page").val(data.current_page);
+            $(".page_details").html("Current page: " + data.current_page);
+          }
+        },
+        complete: function () {
+          $(".ajax-loader").addClass("d-none");
+          $(".pagination-div").removeClass("d-none");
+        },
+      });
+    };
+  </script>
+  {% block javascript %} {% endblock %}
+</body>

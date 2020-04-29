@@ -125,5 +125,6 @@ secrets.json.example
 
 # Virtual Environments
 flickr/
+.vscode/
 
 # End of https://www.gitignore.io/api/django
