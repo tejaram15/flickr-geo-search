@@ -4,14 +4,17 @@ This app demonstrates the use of Flickr API to search public images using python
 
 ## Feature Preview
 
-1. Search for photos and mark them favourite. \
-   ![Home Screen](https://flic.kr/p/2iVBwqV)
+1. Search for photos and mark them favourite.
 
-2. View your favorite photos. \
-   ![Favourites Screen](https://flic.kr/p/2iVFQGW)
+   ![Home Screen](https://live.staticflickr.com/65535/49833463173_41b4591e2d_b.jpg)
 
-3. Add custom tagged locations with latitude and longitude information. \
-   ![Location Save Modal](https://flic.kr/p/2iVBwmr)
+2. View your favorite photos.
+
+   ![Favourites Screen](https://live.staticflickr.com/65535/49834305102_ee836c2b7e_b.jpg)
+
+3. Add custom tagged locations with latitude and longitude information.
+
+   ![Location Save Modal](https://live.staticflickr.com/65535/49833462913_2d1260c68a_o.png)
 
 ## Setup Instructions:
 
