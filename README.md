@@ -2,6 +2,17 @@
 
 This app demonstrates the use of Flickr API to search public images using python and Django framework.
 
+## Feature Preview
+
+1. Search for photos and mark them favourite. \
+   ![Home Screen](https://flic.kr/p/2iVBwqV)
+
+2. View your favorite photos. \
+   ![Favourites Screen](https://flic.kr/p/2iVFQGW)
+
+3. Add custom tagged locations with latitude and longitude information. \
+   ![Location Save Modal](https://flic.kr/p/2iVBwmr)
+
 ## Setup Instructions:
 
 ### Using Source Build:
