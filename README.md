@@ -37,6 +37,4 @@ This app is structured in the following way:
 1.  `search_service` where all the code resides. This is the main service of the application.
 2.  `flickr_geo_search` this is the main app where all the settings, urls and configuration are available.
 
-<style>.heart{color:#e25555;font-size:18px}</style>
-
-Made with <span class="heart">❤</span> by Mindfire.
+Made with :heart: by Mindfire.
