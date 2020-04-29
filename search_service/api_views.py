@@ -1,49 +1,36 @@
+# Global Imports
 import json
 import logging
 import flickrapi
 
-from django.conf import settings
+# Django Specific Imports
 from django.db.models import F
-from django.shortcuts import reverse, render
+from django.conf import settings
 from django.http import JsonResponse
-from search_service.forms import LatLonSearchForm, FavouritesForm, LocationTagForm
-from search_service.models import Favourites, LocationTag
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.shortcuts import reverse, render
+from django.views.decorators.http import require_http_methods
 
+# App Specific Imports
+from search_service.utils import constructPhotoUrl
+from search_service.models import Favourites, LocationTag
+from search_service.forms import LatLonSearchForm, FavouritesForm, LocationTagForm
+
+# Logging Setup.
+# TODO: Add Global Logger Can use Sentry.
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def home(request):
-    template = 'home.html'
-    context = {
-        'search_form': LatLonSearchForm(),
-        'search_url': reverse('search_lat_lon'),
-        'location_form': LocationTagForm(),
-        'title': "Flickr Geo Search"
-    }
-    return render(request, template, context)
-
-
-def favourites(request):
-    template = 'favourites.html'
-    context = {
-        'search_url': reverse('view_favourites_list'),
-        'title': "Favourite Flickr Photos"
-    }
-    return render(request, template, context)
-
-
-def constructPhotoUrl(farmId, serverId, id, secret, size):
-    if size not in ['t', 'c']:
-        logger.error("Incorrect construction parameters.")
-        raise NotImplementedError("Incorrect construction parameters.")
-    baseUrl = f"https://farm{farmId}.staticflickr.com/{serverId}/{id}_{secret}_{size}.jpg"
-    return baseUrl
-
-
+@require_http_methods(["GET"])
 def searchLatLon(request):
+    '''
+    Search Api which recieves Latitude and Longitude to search public images.
+    @param request (Request Object): Request from client.
+    @param current_page (Integer): Accept Current Page as parameter.
+    @param latitude (Float): Latitude Range -90 to 90 degrees.
+    @param longitude (Float): Longitude Range -180 to 180 degrees
+    '''
     current_page = request.GET.get('current_page', 1)
     flickr = flickrapi.FlickrAPI(
         settings.FLICKR_API_KEY, settings.FLICKR_API_SECRET, format='parsed-json')
@@ -64,6 +51,8 @@ def searchLatLon(request):
         try:
             photos = flickr.photos.search(
                 latitude=latitude, longitude=longitude, per_page=settings.PER_PAGE, current_page=current_page)
+            # After receiving a photo object from Flickr API the url can be constructed as described in the following link:
+            # https://www.flickr.com/services/api/misc.urls.html
             for photo in photos['photos']['photo']:
                 farmId = photo['farm']
                 serverId = photo['server']
@@ -75,8 +64,9 @@ def searchLatLon(request):
                     'mediumUrl': constructPhotoUrl(farmId, serverId, id, secret, 'c'),
                 })
         except Exception as exc:
-            logger.error(exc)
-            response['errors'] = exc.__str__()
+            logger.error(
+                "Error occurred while searching photo from flickr : %s", exc)
+            response['errors'] = f"Error occurred while searching photo from flickr : {exc}"
             status = 500
     else:
         response['errors'] = form.errors.get_json_data(escape_html=True)
@@ -84,8 +74,22 @@ def searchLatLon(request):
     return JsonResponse(response, status=status)
 
 
+@require_http_methods(["POST"])
 def addToFavourites(request):
-    data = json.loads(request.body.decode('utf-8'))
+    '''
+    Api that adds a given URL to favourites.
+    @param request (Request Object): Request object.
+    @param photo_original_url (URL): Original Photo URL saved directly. 
+    (Can be Hashed or indexed for fast searching)
+    '''
+    response = {}
+    status = 200
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception as exc:
+        logger.error("Incorrect data received %s", exc)
+        response['error'] = f"Incorrect data received {exc}"
+        return JsonResponse({}, status=status)
     form = FavouritesForm(data)
     response = {}
     status = 200
@@ -104,7 +108,11 @@ def addToFavourites(request):
     return JsonResponse(response, status=status)
 
 
+@require_http_methods(["GET"])
 def viewFavouritesList(request):
+    '''
+    API return a list of favourites in reverse chronological order of creation.
+    '''
     favourites_list = Favourites.objects.all().order_by('-created_at').annotate(
         thumbnailUrl=F('photo_original_url')).values('thumbnailUrl')
     favourites_list = [fav for fav in favourites_list]
@@ -114,16 +122,30 @@ def viewFavouritesList(request):
     return JsonResponse(response)
 
 
+@require_http_methods(["POST"])
 def addLocationTag(request):
-    data = json.loads(request.body.decode('utf-8'))
-    form = LocationTagForm(data)
+    '''
+    API to add a location tag to a latitude/longitude pair.
+    (Intended for use via `fetch` Javascript API.) => Implemented this way to demonstrate available options.
+    @param request (Request Object): Request Object.
+    @param latitude (Float): Latitude Range -90 to 90 degrees.
+    @param longitude (Float): Longitude Range -180 to 180 degrees
+    '''
     response = {}
     status = 200
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception as exc:
+        logger.error("Incorrect data received %s", exc)
+        response['error'] = f"Incorrect data received {exc}"
+        return JsonResponse({}, status=status)
+    form = LocationTagForm(data)
     if form.is_valid():
         obj = LocationTag.objects.filter(
             location_name=form.cleaned_data['location_name'])
         if obj.count() > 0:
             logger.info("A Location with this name already exists.")
+            obj = obj.first()
             obj.latitude = form.cleaned_data['latitude']
             obj.longitude = form.cleaned_data['longitude']
             obj.save()
@@ -145,7 +167,11 @@ def addLocationTag(request):
     return JsonResponse(response, status=status)
 
 
+@require_http_methods(["GET"])
 def getLocationTags(request):
+    '''
+    API to get a list of location tags/latitude-longitude pairs.
+    '''
     location_tags_list = LocationTag.objects.all().values(
         'location_name', 'latitude', 'longitude')
     location_tags_list = [loc for loc in location_tags_list]
